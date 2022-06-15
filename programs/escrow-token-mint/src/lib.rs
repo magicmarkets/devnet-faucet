@@ -15,7 +15,10 @@ pub mod escrow_token_mint {
 
         let (authority, _bump) = Pubkey::find_program_address(&[b"token_authority"], ctx.program_id);
         token::set_authority(
-            ctx.accounts.into_set_authority_mint_base_context(),
+            CpiContext::new(ctx.accounts.token_program.clone(), SetAuthority {
+                account_or_mint: ctx.accounts.token_mint.to_account_info().clone(),
+                current_authority: ctx.accounts.authority.to_account_info(),
+            }),
             AuthorityType::MintTokens,
             Some(authority),
         )?;
@@ -23,7 +26,7 @@ pub mod escrow_token_mint {
         Ok(())
     }
 
-    pub fn mint(ctx: Context<Deposit>, lamports: u64) -> Result<()> {
+    pub fn swap(ctx: Context<Swap>, lamports: u64) -> Result<()> {
         let from = ctx.accounts.depositor.to_account_info();
         let to = ctx.accounts.vault.to_account_info();
 
@@ -112,18 +115,8 @@ pub struct Initialize<'info> {
     pub token_program: AccountInfo<'info>,
 }
 
-impl<'info> Initialize<'info> {
-   fn into_set_authority_mint_base_context(&self) -> CpiContext<'_, '_, '_, 'info, SetAuthority<'info>> {
-       let cpi_accounts = SetAuthority {
-           account_or_mint: self.token_mint.to_account_info().clone(),
-           current_authority: self.authority.to_account_info(),
-       };
-       CpiContext::new(self.token_program.clone(), cpi_accounts)
-   }
-}
-
 #[derive(Accounts)]
-pub struct Deposit<'info>{
+pub struct Swap<'info>{
     #[account(mut)]
     pub depositor: Signer<'info>, 
     /// CHECK:
