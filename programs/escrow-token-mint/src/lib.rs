@@ -86,7 +86,7 @@ pub mod escrow_token_mint {
 
 #[account]
 #[derive(Default)]
-pub struct EscrowMint {
+pub struct Faucet {
     authority: Pubkey,
     mint: Pubkey
 }
@@ -104,7 +104,7 @@ pub struct Initialize<'info> {
         payer = authority,
         space = 0,
     )]
-    pub vault: Account<'info, EscrowMint>, 
+    pub vault: Account<'info, Faucet>,
 
     /// CHECK:
     #[account(address = system_program::ID)]
@@ -140,7 +140,7 @@ pub struct Sweep<'info> {
     #[account(mut)]
     pub authority: Signer<'info>, 
     #[account(mut)]
-    pub vault: Box<Account<'info, EscrowMint>>,
+    pub vault: Box<Account<'info, Faucet>>,
     /// CHECK:
     pub vault_authority: AccountInfo<'info>,
 }
