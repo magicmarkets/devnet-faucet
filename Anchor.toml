@@ -1,7 +1,7 @@
 [features]
 seeds = false
 [programs.localnet]
-escrow_token_mint = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+escrow_token_mint = "FPsGvf9DktpyhbogiKATThu8TUoGix4mUf35CDL1f92Q"
 
 [registry]
 url = "https://anchor.projectserum.com"
