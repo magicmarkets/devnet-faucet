@@ -5,7 +5,6 @@ import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, MINT_SIZE, createInitializeMintInstruction} from "@solana/spl-token";
 import { assert } from "chai";
 
-
 describe("escrow-token-mint", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.Provider.env());
@@ -17,8 +16,18 @@ describe("escrow-token-mint", () => {
   let usdcMint = null;
 
   it("initializes a faucet", async () => {
-    const signature = await provider.connection.requestAirdrop(initializer.publicKey, 2*LAMPORTS_PER_SOL);
-    await provider.connection.confirmTransaction(signature);
+    const airdropSignature = await provider.connection.requestAirdrop(
+      initializer.publicKey,
+      2 * LAMPORTS_PER_SOL
+    );
+
+    const latest = await provider.connection.getLatestBlockhash();
+
+    await provider.connection.confirmTransaction({
+      blockhash: latest.blockhash,
+      lastValidBlockHeight: latest.lastValidBlockHeight,
+      signature: airdropSignature,
+    });
 
     usdcMint = await createSplToken(
       provider.connection,
@@ -27,26 +36,32 @@ describe("escrow-token-mint", () => {
     );
 
     const [vault_account_pda, _vault_account_bump] = await PublicKey.findProgramAddress(
-      [Buffer.from("token_vault")],
+      [initializer.publicKey.toBuffer(), Buffer.from("faucet_vault")],
       program.programId
     );
 
-    // Add your test here.
-    const tx = await program.rpc.initialize({
+    console.log("initializer:", initializer.publicKey.toBase58())
+    console.log("mint:", usdcMint.publicKey.toBase58())
+    console.log("pda:", vault_account_pda.toBase58())
+
+    const _tx = await program.rpc.initialize({
       accounts: {
         authority: initializer.publicKey,
         tokenMint: usdcMint.publicKey,
-        vault: vault_account_pda,
+        faucet: vault_account_pda,
         systemProgram: anchor.web3.SystemProgram.programId,
         rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         tokenProgram: TOKEN_PROGRAM_ID,
       },
+      signers: [initializer],
     });
 
     let _vault = await program.account.faucet.fetch(
       vault_account_pda,
     );
+
     assert.ok(_vault.authority.equals(initializer.publicKey));
+    assert.ok(_vault.mint.equals(usdcMint.publicKey));
   });
 });
 
