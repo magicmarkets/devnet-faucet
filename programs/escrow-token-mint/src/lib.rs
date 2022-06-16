@@ -107,7 +107,7 @@ pub struct Initialize<'info> {
     pub token_mint: Account<'info, Mint>, 
     #[account(
         init,
-        seeds = [authority.key.as_ref(), b"faucet_vault"],
+        seeds = [token_mint.to_account_info().key.as_ref(), b"faucet_vault"],
         bump,
         payer = authority,
         space = 8 + 32 + 32

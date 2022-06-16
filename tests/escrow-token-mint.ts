@@ -37,7 +37,7 @@ describe("escrow-token-mint", () => {
     );
 
     const [vault_account_pda, _vault_account_bump] = await PublicKey.findProgramAddress(
-      [initializer.publicKey.toBuffer(), Buffer.from("faucet_vault")],
+      [usdcMint.publicKey.toBuffer(), Buffer.from("faucet_vault")],
       program.programId
     );
 
@@ -82,7 +82,7 @@ describe("escrow-token-mint", () => {
     let tokenAccount = await createAccount(provider.connection, depositor, usdcMint.publicKey, depositor.publicKey);
 
     const [vault_account_pda, _vault_account_bump] = await PublicKey.findProgramAddress(
-      [initializer.publicKey.toBuffer(), Buffer.from("faucet_vault")],
+      [usdcMint.publicKey.toBuffer(), Buffer.from("faucet_vault")],
       program.programId
     );
 
@@ -117,7 +117,7 @@ describe("escrow-token-mint", () => {
 
   it("allows the initializer to sweep funds", async () => {
     const [vault_account_pda, _vault_account_bump] = await PublicKey.findProgramAddress(
-      [initializer.publicKey.toBuffer(), Buffer.from("faucet_vault")],
+      [usdcMint.publicKey.toBuffer(), Buffer.from("faucet_vault")],
       program.programId
     );
 
@@ -140,7 +140,7 @@ describe("escrow-token-mint", () => {
 
   it("rejects to sweep funds not by authority", async () => {
     const [vault_account_pda, _vault_account_bump] = await PublicKey.findProgramAddress(
-      [initializer.publicKey.toBuffer(), Buffer.from("faucet_vault")],
+      [usdcMint.publicKey.toBuffer(), Buffer.from("faucet_vault")],
       program.programId
     );
 
