@@ -3,7 +3,7 @@ use anchor_spl::token::{self, Mint, SetAuthority };
 use spl_token::instruction::AuthorityType;
 use anchor_lang::solana_program::system_program;
 
-declare_id!("FPsGvf9DktpyhbogiKATThu8TUoGix4mUf35CDL1f92Q");
+declare_id!("EoHnnTLWwErHgWyMvapADVfR9NRF3jUthDXgHqdDNAqm");
 
 #[program]
 pub mod escrow_token_mint {
