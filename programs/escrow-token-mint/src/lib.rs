@@ -16,14 +16,14 @@ pub mod escrow_token_mint {
         let seeds = [ctx.accounts.authority.key.as_ref(), b"faucet_authority"];
         let (authority, _bump) = Pubkey::find_program_address(&seeds, ctx.program_id);
 
-        // token::set_authority(
-        //     CpiContext::new(ctx.accounts.token_program.clone(), SetAuthority {
-        //         account_or_mint: ctx.accounts.token_mint.to_account_info().clone(),
-        //         current_authority: ctx.accounts.authority.to_account_info(),
-        //     }),
-        //     AuthorityType::MintTokens,
-        //     Some(authority),
-        // )?;
+        token::set_authority(
+            CpiContext::new(ctx.accounts.token_program.clone(), SetAuthority {
+                account_or_mint: ctx.accounts.token_mint.to_account_info().clone(),
+                current_authority: ctx.accounts.authority.to_account_info(),
+            }),
+            AuthorityType::MintTokens,
+            Some(authority),
+        )?;
 
         Ok(())
     }
