@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, SetAuthority};
+use anchor_spl::token::{self, Mint, SetAuthority, TokenAccount };
 use spl_token::instruction::AuthorityType;
 use anchor_lang::solana_program::system_program;
 
@@ -13,8 +13,8 @@ pub mod escrow_token_mint {
         ctx.accounts.faucet.authority = *ctx.accounts.authority.key;
         ctx.accounts.faucet.mint = *ctx.accounts.token_mint.to_account_info().key;
         
-        let seeds = [ctx.accounts.authority.key.as_ref(), b"faucet_authority"];
-        let (authority, _bump) = Pubkey::find_program_address(&seeds, ctx.program_id);
+        let seeds = b"faucet_authority";
+        let (authority, _bump) = Pubkey::find_program_address(&[seeds], ctx.program_id);
 
         token::set_authority(
             CpiContext::new(ctx.accounts.token_program.clone(), SetAuthority {
@@ -30,15 +30,20 @@ pub mod escrow_token_mint {
 
     pub fn swap(ctx: Context<Swap>, lamports: u64) -> Result<()> {
         let from = ctx.accounts.depositor.to_account_info();
-        let to = ctx.accounts.vault.to_account_info();
+        let to = ctx.accounts.faucet.to_account_info();
+
+        let amount: u64 = lamports * 100;
+        msg!("minting {:?} escrow tokens", amount);
+        msg!("from {:?}", from.key.to_bytes());
+        msg!("to {:?}", to.key.to_bytes());
 
         // transfer from depositor to our vault
         let ttx = anchor_lang::solana_program::system_instruction::transfer(
-            &from.key,
-            &to.key,
-            lamports,
+             &from.key,
+             &to.key,
+             lamports,
         );
-
+    
         anchor_lang::solana_program::program::invoke(
             &ttx,
             &[
@@ -50,13 +55,10 @@ pub mod escrow_token_mint {
         // mint 100x lamports to receiver
 
         let seeds: &[u8] = b"faucet_authority";
-        let (_authority, authority_bump) = Pubkey::find_program_address(&[seeds], ctx.program_id);
-        let miner_seeds = &[ seeds, &[authority_bump] ];
+        let (_authority, vault_authority_bump) = Pubkey::find_program_address(&[seeds], ctx.program_id);
+        let miner_seeds = &[ seeds, &[vault_authority_bump] ];
         let signer_seeds = &[&miner_seeds[..]];
 
-        let amount: u64 = lamports * 100;
-
-        msg!("minting {:?} escrow token", amount);
         token::mint_to(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
@@ -68,7 +70,7 @@ pub mod escrow_token_mint {
                 signer_seeds,
             ),
             amount as u64).unwrap();
-
+        
         Ok(())
     }
 
@@ -104,7 +106,7 @@ pub struct Initialize<'info> {
         seeds = [authority.key.as_ref(), b"faucet_vault"],
         bump,
         payer = authority,
-        space = 8 + 32 + 32,
+        space = 8 + 32 + 32
     )]
     pub faucet: Account<'info, Faucet>,
 
@@ -128,10 +130,14 @@ pub struct Swap<'info>{
     #[account(mut)]
     pub token_mint: Account<'info, Mint>, // outcome tokens
     /// CHECK:
-    pub vault: AccountInfo<'info>,
+    #[account(mut)]
+    pub faucet: Account<'info, Faucet>,
     /// CHECK:
     pub vault_authority: AccountInfo<'info>,
 
+    /// CHECK:
+    #[account(address = system_program::ID)]
+    pub system_program: AccountInfo<'info>,
     /// CHECK:
     #[account(address = token::ID)]
     pub token_program: AccountInfo<'info>,

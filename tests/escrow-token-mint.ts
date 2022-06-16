@@ -2,7 +2,7 @@ import * as anchor from "@project-serum/anchor";
 import { Program } from "@project-serum/anchor";
 import { EscrowTokenMint } from "../target/types/escrow_token_mint";
 import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, MINT_SIZE, createInitializeMintInstruction} from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, MINT_SIZE, createInitializeMintInstruction, createAccount } from "@solana/spl-token";
 import { assert } from "chai";
 
 describe("escrow-token-mint", () => {
@@ -13,6 +13,7 @@ describe("escrow-token-mint", () => {
   const program = anchor.workspace.EscrowTokenMint as Program<EscrowTokenMint>;
 
   const initializer = anchor.web3.Keypair.generate()
+  const depositor = anchor.web3.Keypair.generate()
   let usdcMint = null;
 
   it("initializes a faucet", async () => {
@@ -56,12 +57,68 @@ describe("escrow-token-mint", () => {
       signers: [initializer],
     });
 
-    let _vault = await program.account.faucet.fetch(
+    let vault = await program.account.faucet.fetch(
       vault_account_pda,
     );
 
-    assert.ok(_vault.authority.equals(initializer.publicKey));
-    assert.ok(_vault.mint.equals(usdcMint.publicKey));
+    assert.ok(vault.authority.equals(initializer.publicKey));
+    assert.ok(vault.mint.equals(usdcMint.publicKey));
+  });
+
+  it("swaps sol for tokens", async () => {
+    const airdropSignature = await provider.connection.requestAirdrop(
+      depositor.publicKey,
+      2 * LAMPORTS_PER_SOL
+    );
+
+    const latest = await provider.connection.getLatestBlockhash();
+
+    await provider.connection.confirmTransaction({
+      blockhash: latest.blockhash,
+      lastValidBlockHeight: latest.lastValidBlockHeight,
+      signature: airdropSignature,
+    });
+
+    let tokenAccount = await createAccount(provider.connection, depositor, usdcMint.publicKey, depositor.publicKey);
+
+    const [vault_account_pda, _vault_account_bump] = await PublicKey.findProgramAddress(
+      [initializer.publicKey.toBuffer(), Buffer.from("faucet_vault")],
+      program.programId
+    );
+
+    const [authority, _vault_authority_bump] = await PublicKey.findProgramAddress(
+      [Buffer.from("faucet_authority")],
+      program.programId
+    );
+
+    console.log("depositor:", depositor.publicKey.toBase58())
+
+    const amount = new anchor.BN(1 * LAMPORTS_PER_SOL);
+    try {
+    const _tx = await program.rpc.swap(amount, {
+      accounts: {
+        depositor: depositor.publicKey,
+        receiverTokenAccount: tokenAccount,
+        tokenMint: usdcMint.publicKey,
+        faucet: vault_account_pda, // populated by prev test
+        vaultAuthority: authority,
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      },
+      signers: [depositor],
+    });
+  } catch (e) {
+    console.log(e)
+  }
+
+    let tokenBalance = await provider.connection.getTokenAccountBalance(tokenAccount);
+    console.log(tokenBalance.value.uiAmount)
+    assert.ok(tokenBalance.value.uiAmount > 0);
+    assert.ok(tokenBalance.value.uiAmount = 100);
+
+    let balance = await provider.connection.getBalance(depositor.publicKey);
+    console.log(balance)
+    assert.ok(balance < 1 * LAMPORTS_PER_SOL);
   });
 });
 
