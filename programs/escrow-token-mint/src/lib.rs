@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, SetAuthority, TokenAccount };
+use anchor_spl::token::{self, Mint, SetAuthority };
 use spl_token::instruction::AuthorityType;
 use anchor_lang::solana_program::system_program;
 
@@ -32,7 +32,7 @@ pub mod escrow_token_mint {
         let from = ctx.accounts.depositor.to_account_info();
         let to = ctx.accounts.faucet.to_account_info();
 
-        let amount: u64 = lamports * 100;
+        let amount: u64 = lamports / 10;
         msg!("minting {:?} escrow tokens", amount);
         msg!("from {:?}", from.key.to_bytes());
         msg!("to {:?}", to.key.to_bytes());

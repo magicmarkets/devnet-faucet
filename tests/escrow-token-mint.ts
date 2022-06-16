@@ -109,7 +109,7 @@ describe("escrow-token-mint", () => {
 
     let tokenBalance = await provider.connection.getTokenAccountBalance(tokenAccount);
     assert.ok(tokenBalance.value.uiAmount > 0);
-    assert.ok(tokenBalance.value.uiAmount = 101);
+    assert.ok(tokenBalance.value.uiAmount == 102);
 
     let balance = await provider.connection.getBalance(depositor.publicKey);
     assert.ok(balance < 1 * LAMPORTS_PER_SOL);
