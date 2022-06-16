@@ -10,18 +10,20 @@ pub mod escrow_token_mint {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        ctx.accounts.vault.authority = *ctx.accounts.authority.key;
-        ctx.accounts.vault.mint = *ctx.accounts.token_mint.to_account_info().key;
+        ctx.accounts.faucet.authority = *ctx.accounts.authority.key;
+        ctx.accounts.faucet.mint = *ctx.accounts.token_mint.to_account_info().key;
+        
+        let seeds = [ctx.accounts.authority.key.as_ref(), b"faucet_authority"];
+        let (authority, _bump) = Pubkey::find_program_address(&seeds, ctx.program_id);
 
-        let (authority, _bump) = Pubkey::find_program_address(&[b"token_authority"], ctx.program_id);
-        token::set_authority(
-            CpiContext::new(ctx.accounts.token_program.clone(), SetAuthority {
-                account_or_mint: ctx.accounts.token_mint.to_account_info().clone(),
-                current_authority: ctx.accounts.authority.to_account_info(),
-            }),
-            AuthorityType::MintTokens,
-            Some(authority),
-        )?;
+        // token::set_authority(
+        //     CpiContext::new(ctx.accounts.token_program.clone(), SetAuthority {
+        //         account_or_mint: ctx.accounts.token_mint.to_account_info().clone(),
+        //         current_authority: ctx.accounts.authority.to_account_info(),
+        //     }),
+        //     AuthorityType::MintTokens,
+        //     Some(authority),
+        // )?;
 
         Ok(())
     }
@@ -47,7 +49,7 @@ pub mod escrow_token_mint {
 
         // mint 100x lamports to receiver
 
-        let seeds: &[u8] = b"token_authority";
+        let seeds: &[u8] = b"faucet_authority";
         let (_authority, authority_bump) = Pubkey::find_program_address(&[seeds], ctx.program_id);
         let miner_seeds = &[ seeds, &[authority_bump] ];
         let signer_seeds = &[&miner_seeds[..]];
@@ -88,7 +90,7 @@ pub mod escrow_token_mint {
 #[derive(Default)]
 pub struct Faucet {
     authority: Pubkey,
-    mint: Pubkey
+    mint: Pubkey,
 }
 
 #[derive(Accounts)]
@@ -99,12 +101,12 @@ pub struct Initialize<'info> {
     pub token_mint: Account<'info, Mint>, 
     #[account(
         init,
-        seeds = [b"token_vault"],
+        seeds = [authority.key.as_ref(), b"faucet_vault"],
         bump,
         payer = authority,
-        space = 0,
+        space = 8 + 32 + 32,
     )]
-    pub vault: Account<'info, Faucet>,
+    pub faucet: Account<'info, Faucet>,
 
     /// CHECK:
     #[account(address = system_program::ID)]
@@ -140,7 +142,7 @@ pub struct Sweep<'info> {
     #[account(mut)]
     pub authority: Signer<'info>, 
     #[account(mut)]
-    pub vault: Box<Account<'info, Faucet>>,
+    pub vault: Account<'info, Faucet>,
     /// CHECK:
     pub vault_authority: AccountInfo<'info>,
 }
