@@ -74,11 +74,15 @@ pub mod escrow_token_mint {
         Ok(())
     }
 
-    pub fn sweep_donations(ctx: Context<Sweep>, lamports: u64) -> Result<()> {
-        let from = ctx.accounts.vault.to_account_info();
+    pub fn sweep(ctx: Context<Sweep>, lamports: u64) -> Result<()> {
+        let from = ctx.accounts.faucet.to_account_info();
         let to = ctx.accounts.authority.to_account_info();
 
-        let balance = ctx.accounts.vault.to_account_info().lamports();
+        if from.owner != ctx.program_id || &ctx.accounts.faucet.authority != to.key {
+            return Err(ErrorCode::WrongAuthority.into())
+        }
+
+        let balance = ctx.accounts.faucet.to_account_info().lamports();
         msg!("sweeping {:?}/{:?} lamports", lamports, balance);
 
         **from.try_borrow_mut_lamports()? -= lamports;
@@ -148,7 +152,12 @@ pub struct Sweep<'info> {
     #[account(mut)]
     pub authority: Signer<'info>, 
     #[account(mut)]
-    pub vault: Account<'info, Faucet>,
-    /// CHECK:
-    pub vault_authority: AccountInfo<'info>,
+    pub faucet: Account<'info, Faucet>,
+}
+
+
+#[error_code]
+pub enum ErrorCode {
+    #[msg("wrong authority")]
+    WrongAuthority,
 }

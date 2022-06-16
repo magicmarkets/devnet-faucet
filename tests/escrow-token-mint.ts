@@ -65,7 +65,7 @@ describe("escrow-token-mint", () => {
     assert.ok(vault.mint.equals(usdcMint.publicKey));
   });
 
-  it("swaps sol for tokens", async () => {
+  it("swaps SOL for 100x tokens", async () => {
     const airdropSignature = await provider.connection.requestAirdrop(
       depositor.publicKey,
       2 * LAMPORTS_PER_SOL
@@ -93,8 +93,7 @@ describe("escrow-token-mint", () => {
 
     console.log("depositor:", depositor.publicKey.toBase58())
 
-    const amount = new anchor.BN(1 * LAMPORTS_PER_SOL);
-    try {
+    const amount = new anchor.BN(1.02 * LAMPORTS_PER_SOL);
     const _tx = await program.rpc.swap(amount, {
       accounts: {
         depositor: depositor.publicKey,
@@ -107,21 +106,60 @@ describe("escrow-token-mint", () => {
       },
       signers: [depositor],
     });
-  } catch (e) {
-    console.log(e)
-  }
 
     let tokenBalance = await provider.connection.getTokenAccountBalance(tokenAccount);
-    console.log(tokenBalance.value.uiAmount)
     assert.ok(tokenBalance.value.uiAmount > 0);
-    assert.ok(tokenBalance.value.uiAmount = 100);
+    assert.ok(tokenBalance.value.uiAmount = 101);
 
     let balance = await provider.connection.getBalance(depositor.publicKey);
-    console.log(balance)
     assert.ok(balance < 1 * LAMPORTS_PER_SOL);
   });
-});
 
+  it("allows the initializer to sweep funds", async () => {
+    const [vault_account_pda, _vault_account_bump] = await PublicKey.findProgramAddress(
+      [initializer.publicKey.toBuffer(), Buffer.from("faucet_vault")],
+      program.programId
+    );
+
+
+    let balance0 = await provider.connection.getBalance(initializer.publicKey);
+
+    const amount = new anchor.BN(1.01 * LAMPORTS_PER_SOL);
+    const _tx = await program.rpc.sweep(amount, {
+      accounts: {
+        authority: initializer.publicKey,
+        faucet: vault_account_pda, // populated by prev test
+      },
+      signers: [initializer],
+    });
+
+    let balance1 = await provider.connection.getBalance(initializer.publicKey);
+    assert.ok(balance0 < balance1);
+  });
+
+
+  it("rejects to sweep funds not by authority", async () => {
+    const [vault_account_pda, _vault_account_bump] = await PublicKey.findProgramAddress(
+      [initializer.publicKey.toBuffer(), Buffer.from("faucet_vault")],
+      program.programId
+    );
+
+    const amount = new anchor.BN(0.01 * LAMPORTS_PER_SOL);
+    try {
+      const _tx = await program.rpc.sweep(amount, {
+        accounts: {
+          authority: depositor.publicKey,
+          faucet: vault_account_pda, // populated by prev test
+        },
+        signers: [depositor],
+      });
+      assert.ok(false);
+    } catch(e) {
+      const errMsg = "wrong authority";
+      assert.equal(e.toString(), errMsg);
+    }
+  });
+});
 
 const createSplToken = async (connection: anchor.web3.Connection, wallet: anchor.web3.Keypair, decimals: number): Promise<anchor.web3.Keypair> => {
   const mint = anchor.web3.Keypair.generate();
